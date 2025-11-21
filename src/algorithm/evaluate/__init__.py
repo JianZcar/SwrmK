@@ -1,0 +1,116 @@
+from typing import List, Dict, Tuple, Optional
+from algorithm.evaluate.metrics import metrics_matrix
+
+
+def evaluate(
+    keys: List[List[int]],
+    fingers: List[List[int]],
+    effort: List[List[float]],
+    letter_freq: Dict[int, int],
+    bigrams: List[Tuple[int, int, int]],
+    trigrams: Optional[List[Tuple[int, int, int, int]]] = None,
+    distance_matrix: Optional[List[List[float]]] = None,
+    weights: Optional[Dict[str, float]] = None,
+) -> Tuple[float, Dict]:
+    """
+    Evaluate combined matrices and return (score, metrics).
+
+    Inputs are assumed COMBINED (left+right already merged row-wise).
+    - letter_freq: {key_num: count}
+    - bigrams: list of (a_key, b_key, count)
+    - trigrams: optional list of (a,b,c,count)
+    - distance_matrix: optional combined distance matrix (same shape as keys)
+    - weights: optional dict overriding defaults
+    """
+
+    # 1) compute metrics (metrics_matrix builds key_pos internally)
+    metrics = metrics_matrix(
+        keys=keys,
+        fingers=fingers,
+        effort=effort,
+        letter_freq=letter_freq or {},
+        bigrams=bigrams or [],
+        trigrams=trigrams,
+        distance_matrix=distance_matrix
+    )
+
+    # 2) default weights (tweak these to taste)
+    default_weights: Dict[str, float] = {
+        "sfb": 1.0,
+        "effort": 1.0,
+        "psfb": 1.0,
+        "rsfb": 1.0,
+        "scissors": 1.0,
+        "prscissors": 1.0,
+        "wide_scissors": 1.0,
+        "lat_str": 1.0,
+        "sfs": 1.0,
+        "vowels": 1.0,
+        "hand_balance": 1.0,
+        "trigrams_sfb": 1.0,
+        # set 0.0 because it's a dict (not scalar) — you can change strategy below
+        "finger_load": 0.0,
+        "row_usage": 0.0,          # set 0.0 because it's a dict (not scalar)
+        "distance": 1.0,
+        "hand_alternation": 1.0,
+        "finger_alternation": 1.0,
+        # rolls is a dict; handled specially below if you want it included
+        "rolls": 0.0,
+        "row_jumps": 1.0,
+    }
+
+    # Merge user weights (if provided)
+    if weights:
+        default_weights.update(weights)
+
+    # 3) Combine metric values into a single float score.
+    #    For scalar metrics, multiply directly.
+    #    For dict-valued metrics (finger_load, row_usage, rolls) we handle them explicitly:
+    score = 0.0
+
+    # Scalar metrics (present in metrics as numbers)
+    scalar_keys = [
+        "sfb", "effort", "psfb", "rsfb", "scissors",
+        "prscissors", "wide_scissors", "lat_str", "sfs",
+        "vowels", "hand_balance", "trigrams_sfb",
+        "distance", "hand_alternation", "finger_alternation", "row_jumps"
+    ]
+    for k in scalar_keys:
+        val = metrics.get(k, 0)
+        w = default_weights.get(k, 0.0)
+        # defensive: ensure numeric
+        try:
+            score += float(val) * float(w)
+        except Exception:
+            # if val can't be cast to float, skip (or log)
+            continue
+
+    # Optional: include finger_load as a penalty for overloaded fingers
+    # default_weights["finger_load"] tells per-finger weight (single scalar) or 0 to skip.
+    fl_w = default_weights.get("finger_load", 0.0)
+    if fl_w != 0.0 and isinstance(metrics.get("finger_load"), dict):
+        # Simple strategy: penalize variance or max usage. Example uses max*weight.
+        finger_load = metrics["finger_load"]
+        max_load = max(finger_load.values()) if finger_load else 0
+        score += max_load * fl_w
+
+    # Optional: include row_usage (penalize too much top/bottom usage)
+    ru_w = default_weights.get("row_usage", 0.0)
+    if ru_w != 0.0 and isinstance(metrics.get("row_usage"), dict):
+        row_usage = metrics["row_usage"]
+        # Example: penalize the max row usage
+        max_row = max(row_usage.values()) if row_usage else 0
+        score += max_row * ru_w
+
+    # Optional: include rolls (inward/outward)
+    rolls_w = default_weights.get("rolls", 0.0)
+    if rolls_w != 0.0 and isinstance(metrics.get("rolls"), dict):
+        rolls = metrics["rolls"]
+        # Example: treat outward rolls as penalty, inward as smaller penalty (customize as needed)
+        outward = rolls.get("outward", 0)
+        # inward = rolls.get("inward", 0)
+        score += outward * rolls_w
+        # if you want different scaling: score += inward * (rolls_w * 0.5)
+
+    # 4) Return final score and full metric breakdown
+    return float(score), metrics
