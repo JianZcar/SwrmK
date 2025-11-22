@@ -1,6 +1,5 @@
 from utils import combine_matrices, get_unigram, get_bigram, get_trigram
 
-VOWELS = {1, 5, 9, 15, 21}  # numeric indices for a,e,i,o,u if you use 1..26
 DEFAULT_PINKIES = {0, 9}    # example: first and last fingers
 DEFAULT_RINGS = {1, 8}      # example: second and second-last fingers
 
@@ -38,15 +37,15 @@ fingers_right = [
 ]
 
 effort_left = [
-    [5, 2, 2, 2, 7],
-    [0, 0, 0, 0, 6],
-    [8, 5, 5, 5, 8],
+    [8, 3, 3, 3, 7],
+    [2, 0, 0, 0, 6],
+    [9, 7, 7, 7, 8],
 ]
 
 effort_right = [
-    [7, 2, 2, 2, 5],
-    [6, 0, 0, 0, 0],
-    [8, 5, 5, 5, 8],
+    [7, 2, 2, 2, 8],
+    [6, 0, 0, 0, 2],
+    [8, 5, 5, 5, 9],
 ]
 
 distance_left = [

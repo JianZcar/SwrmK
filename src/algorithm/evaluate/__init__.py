@@ -38,25 +38,14 @@ def evaluate(
     default_weights: Dict[str, float] = {
         "sfb": 1000.0,
         "effort": 100.0,
-        "psfb": 1.0,
-        "rsfb": 1.0,
         "scissors": 1.0,
         "prscissors": 1.0,
         "wide_scissors": 1.0,
-        "lat_str": 1.0,
-        "sfs": 1.0,
-        "vowels": 40.0,
-        "hand_balance": 0.2,
-        "trigrams_sfb": 1.0,
-        # set 0.0 because it's a dict (not scalar) — you can change strategy below
-        "finger_load": 90.0,
-        "row_usage": 0.0,          # set 0.0 because it's a dict (not scalar)
+        "hand_balance": 10.0,
+        "finger_load": 100.0,  # Handled specially below
         "distance": 20.0,
-        "hand_alternation": 0.5,
-        "finger_alternation": 0.9,
-        # rolls is a dict; handled specially below if you want it included
-        "rolls": 1.9,
-        "row_jumps": 1.0,
+        "hand_alternation": 1.0,
+        "rolls": 50.0,  # Handled specially below
     }
 
     # Merge user weights (if provided)
@@ -65,15 +54,13 @@ def evaluate(
 
     # 3) Combine metric values into a single float score.
     #    For scalar metrics, multiply directly.
-    #    For dict-valued metrics (finger_load, row_usage, rolls) we handle them explicitly:
+    #    For dict-valued metrics (finger_load, rolls) we handle them explicitly:
     score = 0.0
 
     # Scalar metrics (present in metrics as numbers)
     scalar_keys = [
-        "sfb", "effort", "psfb", "rsfb", "scissors",
-        "prscissors", "wide_scissors", "lat_str", "sfs",
-        "vowels", "hand_balance", "trigrams_sfb",
-        "distance", "hand_alternation", "finger_alternation", "row_jumps"
+        "sfb", "effort", "scissors", "prscissors", "wide_scissors",
+        "hand_balance", "distance", "hand_alternation"
     ]
     for k in scalar_keys:
         val = metrics.get(k, 0)
@@ -93,14 +80,6 @@ def evaluate(
         finger_load = metrics["finger_load"]
         max_load = max(finger_load.values()) if finger_load else 0
         score += max_load * fl_w
-
-    # Optional: include row_usage (penalize too much top/bottom usage)
-    ru_w = default_weights.get("row_usage", 0.0)
-    if ru_w != 0.0 and isinstance(metrics.get("row_usage"), dict):
-        row_usage = metrics["row_usage"]
-        # Example: penalize the max row usage
-        max_row = max(row_usage.values()) if row_usage else 0
-        score += max_row * ru_w
 
     # Optional: include rolls (inward/outward)
     rolls_w = default_weights.get("rolls", 0.0)
