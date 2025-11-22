@@ -2,6 +2,8 @@
 
 EvoKana is a Python-based framework designed for the autonomous **evolution and optimization of keyboard layouts**. Inspired by the systematic arrangement and learning inherent in 'kana' syllabaries, this project employs advanced computational intelligence techniques to discover highly efficient and ergonomic keyboard configurations.
 
+It works but it needs more refinement
+
 ## What it Does
 
 The core purpose of EvoKana is to mathematically evaluate and iteratively refine keyboard layouts to minimize typing effort and maximize efficiency. It simulates the natural "evolution" of character placement on a keyboard, adapting to statistical language patterns and ergonomic considerations.
