@@ -48,45 +48,63 @@ def layout_to_letters(num_layout, keymap):
 
 def get_unigram(path, definition):
     letter_freq = {}
+    rows = []
+    total_freq = 0
     with open(path, newline='', encoding='utf-8') as f:
         reader = csv.DictReader(f)
         for row in reader:
-            letter = row['unigram'].lower()
-            count = int(row['freq'])  # or whatever field name
-            k = definition.get(letter)
-            if k:
-                letter_freq[k] = count
+            rows.append(row)
+            total_freq += int(row['freq'])
+
+    for row in rows:
+        letter = row['unigram'].lower()
+        count = int(row['freq'])
+        k = definition.get(letter)
+        if k:
+            letter_freq[k] = count / total_freq
     return letter_freq
 
 
 def get_bigram(path, definition):
     bigrams = []
+    rows = []
+    total_freq = 0
     with open(path, newline='', encoding='utf-8') as f:
         reader = csv.DictReader(f)
         for row in reader:
-            bi = row.get('bigram', '')
-            if not bi or len(bi) != 2:
-                continue  # skip empty or malformed entries
-            freq = int(row['freq'])
-            ka = definition.get(bi[0].lower())
-            kb = definition.get(bi[1].lower())
-            if ka and kb:
-                bigrams.append((ka, kb, freq))
+            rows.append(row)
+            total_freq += int(row['freq'])
+
+    for row in rows:
+        bi = row.get('bigram', '')
+        if not bi or len(bi) != 2:
+            continue  # skip empty or malformed entries
+        freq = int(row['freq'])
+        ka = definition.get(bi[0].lower())
+        kb = definition.get(bi[1].lower())
+        if ka and kb:
+            bigrams.append((ka, kb, freq / total_freq))
     return bigrams
 
 
 def get_trigram(path, definition):
     trigrams = []
+    rows = []
+    total_freq = 0
     with open(path, newline='', encoding='utf-8') as f:
         reader = csv.DictReader(f)
         for row in reader:
-            tri = row.get('trigram', '')
-            if not tri or len(tri) != 3:
-                continue
-            freq = int(row['freq'])
-            ka = definition.get(tri[0].lower())
-            kb = definition.get(tri[1].lower())
-            kc = definition.get(tri[2].lower())
-            if ka and kb and kc:
-                trigrams.append((ka, kb, kc, freq))
+            rows.append(row)
+            total_freq += int(row['freq'])
+
+    for row in rows:
+        tri = row.get('trigram', '')
+        if not tri or len(tri) != 3:
+            continue
+        freq = int(row['freq'])
+        ka = definition.get(tri[0].lower())
+        kb = definition.get(tri[1].lower())
+        kc = definition.get(tri[2].lower())
+        if ka and kb and kc:
+            trigrams.append((ka, kb, kc, freq / total_freq))
     return trigrams

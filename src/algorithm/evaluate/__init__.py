@@ -36,8 +36,8 @@ def evaluate(
 
     # 2) default weights (tweak these to taste)
     default_weights: Dict[str, float] = {
-        "sfb": 1.0,
-        "effort": 1.0,
+        "sfb": 1000.0,
+        "effort": 100.0,
         "psfb": 1.0,
         "rsfb": 1.0,
         "scissors": 1.0,
@@ -45,17 +45,17 @@ def evaluate(
         "wide_scissors": 1.0,
         "lat_str": 1.0,
         "sfs": 1.0,
-        "vowels": 1.0,
-        "hand_balance": 1.0,
+        "vowels": 40.0,
+        "hand_balance": 0.2,
         "trigrams_sfb": 1.0,
         # set 0.0 because it's a dict (not scalar) — you can change strategy below
-        "finger_load": 0.0,
+        "finger_load": 90.0,
         "row_usage": 0.0,          # set 0.0 because it's a dict (not scalar)
-        "distance": 1.0,
-        "hand_alternation": 1.0,
-        "finger_alternation": 1.0,
+        "distance": 20.0,
+        "hand_alternation": 0.5,
+        "finger_alternation": 0.9,
         # rolls is a dict; handled specially below if you want it included
-        "rolls": 0.0,
+        "rolls": 1.9,
         "row_jumps": 1.0,
     }
 
@@ -113,4 +113,6 @@ def evaluate(
         # if you want different scaling: score += inward * (rolls_w * 0.5)
 
     # 4) Return final score and full metric breakdown
+    # if metrics["sfb"] <= 6:
+    #     print(metrics)
     return float(score)

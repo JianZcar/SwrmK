@@ -38,7 +38,7 @@ def sfb_metric(keys: List[List[int]],
         r2, c2 = pb
         if fingers[r1][c1] == fingers[r2][c2]:
             total += count
-    return total
+    return total * 100
 
 
 def effort_metric(keys: List[List[int]],
@@ -74,7 +74,7 @@ def psfb_metric(keys, fingers, bigrams, pinkies=DEFAULT_PINKIES, key_pos=None):
         f = fingers[r1][c1]
         if f == fingers[r2][c2] and f in pinkies:
             total += count
-    return total
+    return total * 100
 
 
 def rsfb_metric(keys, fingers, bigrams, rings=DEFAULT_RINGS, key_pos=None):
@@ -91,7 +91,7 @@ def rsfb_metric(keys, fingers, bigrams, rings=DEFAULT_RINGS, key_pos=None):
         f = fingers[r1][c1]
         if f == fingers[r2][c2] and f in rings:
             total += count
-    return total
+    return total * 100
 
 
 def scissors_metric(keys, fingers, bigrams, key_pos=None):
@@ -110,7 +110,7 @@ def scissors_metric(keys, fingers, bigrams, key_pos=None):
             continue
         if abs(r1 - r2) == 2 and abs(fa - fb) == 1:
             total += count
-    return total
+    return total * 100
 
 
 def prscissors_metric(keys, fingers, bigrams, rings=DEFAULT_RINGS,
@@ -129,7 +129,7 @@ def prscissors_metric(keys, fingers, bigrams, rings=DEFAULT_RINGS,
         if (fa in rings and fb in pinkies) or (fb in rings and fa in pinkies):
             if abs(r1 - r2) >= 1:
                 total += count
-    return total
+    return total * 100
 
 
 def wide_scissors_metric(keys, fingers, bigrams, key_pos=None):
@@ -148,7 +148,7 @@ def wide_scissors_metric(keys, fingers, bigrams, key_pos=None):
             continue
         if abs(r1 - r2) == 2 and abs(c1 - c2) > 1:
             total += count
-    return total
+    return total * 100
 
 
 def lat_str_metric(keys, fingers, bigrams, key_pos=None):
@@ -167,7 +167,7 @@ def lat_str_metric(keys, fingers, bigrams, key_pos=None):
             continue
         if r1 == r2 and abs(c1 - c2) >= 2:
             total += count
-    return total
+    return total * 100
 
 
 def sfs_metric(keys, fingers, bigrams, key_pos=None):
@@ -183,7 +183,7 @@ def sfs_metric(keys, fingers, bigrams, key_pos=None):
         r2, c2 = pb
         if fingers[r1][c1] == fingers[r2][c2] and abs(r1 - r2) == 1:
             total += count
-    return total
+    return total * 100
 
 
 def vowels_metric(keys, fingers, letter_freq: Dict[int, int], key_pos=None):
@@ -247,7 +247,7 @@ def trigrams_sfb_metric(keys: List[List[int]],
         r3, c3 = pc
         if fingers[r1][c1] == fingers[r2][c2] == fingers[r3][c3]:
             total += count
-    return total
+    return total * 100
 
 
 def finger_load_metric(keys: List[List[int]],
@@ -264,7 +264,7 @@ def finger_load_metric(keys: List[List[int]],
         r, c = pos
         load[fingers[r][c]] += cnt
     # convert to normal dict (and ensure keys 1..10 exist)
-    return {f: load.get(f, 0) for f in range(1, 11)}
+    return {f: load.get(f, 0) * 100 for f in range(1, 11)}
 
 
 def row_usage_metric(keys: List[List[int]],
@@ -279,7 +279,7 @@ def row_usage_metric(keys: List[List[int]],
             continue
         r, _ = pos
         usage[r] += cnt
-    return dict(usage)
+    return {k: v * 100 for k, v in usage.items()}
 
 
 def distance_metric(keys: List[List[int]],
@@ -389,7 +389,7 @@ def rolls_metric(keys, fingers, bigrams, key_pos=None) -> Dict[str, int]:
             inward += count
         elif fa > fb:
             outward += count
-    return {"inward": inward, "outward": outward}
+    return {"inward": inward * 100, "outward": outward * 100}
 
 
 def row_jump_metric(keys, bigrams, key_pos=None) -> int:
@@ -405,7 +405,7 @@ def row_jump_metric(keys, bigrams, key_pos=None) -> int:
         r2, c2 = pb
         if abs(r1 - r2) > 1:
             total += count
-    return total
+    return total * 100
 
 
 # ---------- Wrapper that returns all metrics ----------
