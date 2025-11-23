@@ -2,6 +2,8 @@ from os import cpu_count
 from tabulate import tabulate
 from concurrent.futures import ProcessPoolExecutor
 from optimizer.evaluate import evaluate
+from utils import apply_layout, layout_to_letters
+from config import LAYOUT_TEMPLATE, KEYMAP
 import numpy as np
 
 
@@ -62,7 +64,17 @@ def segment_crossover(parent_a, parent_b, rng):
     return child
 
 
+def inversion_mutation(layout, rng, max_span=10):
+    new = layout.copy()
+    n = len(new)
+    i, j = sorted(rng.integers(0, n, size=2))
+    new[i:j+1] = new[i:j+1][::-1]
+    return new
+
+
 def swap_mutation(layout, rng, swap_prob=0.1):
+    if rng.random() < 0.5:
+        return inversion_mutation(layout, rng)
     new = layout.copy()
     n = len(new)
     attempts = max(1, int(np.ceil(n * swap_prob)))
@@ -70,6 +82,27 @@ def swap_mutation(layout, rng, swap_prob=0.1):
         i, j = rng.integers(0, n, size=2)
         new[i], new[j] = new[j], new[i]
     return new
+
+
+def ensure_unique_mutation(layout, seen_set, rng,
+                           swap_prob=0.5, max_attempts=100):
+    for _ in range(max_attempts):
+        candidate = swap_mutation(layout, rng, swap_prob=swap_prob)
+
+        tup = tuple(int(x) for x in candidate.tolist())
+        if tup not in seen_set:
+            seen_set.add(tup)
+            return candidate
+
+    n_slots = len(layout)
+    n_char = int(np.count_nonzero(layout))
+
+    while True:
+        candidate = random_layout(n_slots, n_char)
+        tup = tuple(int(x) for x in candidate.tolist())
+        if tup not in seen_set:
+            seen_set.add(tup)
+            return candidate
 
 
 def simulated_annealing(layout: list,   n_iter: int,
@@ -89,7 +122,7 @@ def simulated_annealing(layout: list,   n_iter: int,
         neighbor = current_layout.copy()
         neighbor[i], neighbor[j] = neighbor[j], neighbor[i]
         neigh_metrics, neigh_score = evaluate_layout(neighbor)
-        delta = neigh_score - current_score
+        delta = ((neigh_score/best_score)*100) - ((current_score/best_score)*100)
         if delta < 0 or rng.random() < np.exp(-delta / max(1e-12, T)):
             current_metrics, current_score, current = (neigh_metrics,
                                                        neigh_score,
@@ -118,11 +151,11 @@ def _evaluate_child_worker(args):
 def msa(
         n_pop: int,     n_gen:  int,
         n_char: int,    n_slots: int,
-        f_elite: float = 0.1,    f_mut: float = 0.2,
+        f_elite: float = 0.05,  f_mut: float = 0.15,
         f_cross: float = 0.9,   f_prob: float = 0.5,
-        n_iter: int = 200,      f_t0: float = 1.0,
+        n_iter: int = 500,      f_t0: float = 1.0,
         f_alpha: float = 0.98,  n_tourn: int = 3,
-        seed: int = 67,         n_workers: int = None,
+        seed: int = 42,         n_workers: int = None,
         verbose: bool = True
 ) -> [[], int]:
     """
@@ -135,6 +168,8 @@ def msa(
     n_workers = cpu_count() or 1 if n_workers is None else n_workers
 
     pop = init_population(n_pop, n_slots, n_char, rng)
+
+    seen_layouts = set(tuple(int(x) for x in row.tolist()) for row in pop)
 
     initial_args = [(pop[i], 0.0, 0, 0.0, 0.0,
                      rng.integers(0, 2**31 - 1)) for i in range(n_pop)]
@@ -172,7 +207,10 @@ def msa(
                 child = segment_crossover(parent_a, parent_b, rng)
             else:
                 child = parent_a.copy()
-            child = swap_mutation(child, rng, swap_prob=f_mut)
+
+            child = ensure_unique_mutation(
+                child, seen_layouts, rng, swap_prob=f_mut)
+
             offspring.append(child)
             offspring_seeds.append(int(rng.integers(0, 2**31 - 1)))
 
@@ -189,13 +227,16 @@ def msa(
 
         pop = np.vstack(new_pop)[:n_pop]
 
+        seen_layouts = set(tuple(int(x) for x in row.tolist()) for row in pop)
+
         score_args = [
             (pop[i], 0.0, 0, 0.0, 0.0, int(rng.integers(0, 2**31 - 1)))
             for i in range(pop.shape[0])
         ]
         with ProcessPoolExecutor(max_workers=n_workers) as ex:
             results = list(ex.map(_evaluate_child_worker, score_args))
-        scores = np.array([score for (_metrics, score, _layout) in results], dtype=float)
+        scores = np.array(
+            [score for (_metrics, score, _layout) in results], dtype=float)
         # l_metrics = np.array([metrics for (metrics, _score, _layout) in results], dtype=float)
 
         # update global best
@@ -203,17 +244,19 @@ def msa(
         if scores[best_idx] < global_score:
             global_score = float(scores[best_idx])
             global_best = pop[best_idx].copy()
+            best_layout = layout_to_letters(
+                apply_layout(global_best, LAYOUT_TEMPLATE), KEYMAP)
+            print(tabulate(best_layout, tablefmt="fancy_grid"))
             # global_metrics = l_metrics[best_idx].copy()
             if verbose:
                 print(f"Gen {gen}: new global best = {global_score:.6f}")
 
-        # diversity reseed if collapsed
         mean_std = pop.reshape(n_pop, -1).std(axis=0).mean()
         if mean_std < 1e-3:
             num_reseed = max(1, n_pop // 2)
             for r_idx in rng.choice(n_pop, size=num_reseed, replace=False):
                 pop[r_idx] = random_layout(n_slots, n_char, rng)
-            # recompute scores after reseed
+                seen_layouts.add(tuple(int(x) for x in pop[r_idx].tolist()))
             score_args = [
                 (pop[i], 0.0, 0, 0.0, 0.0, int(rng.integers(0, 2**31 - 1)))
                 for i in range(pop.shape[0])

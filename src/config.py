@@ -1,7 +1,5 @@
 from utils import combine_matrices, get_unigram, get_bigram, get_trigram
 
-DEFAULT_PINKIES = {0, 9}    # example: first and last fingers
-DEFAULT_RINGS = {1, 8}      # example: second and second-last fingers
 
 KEYMAP = {
     'a': 1, 'b': 2, 'c': 3, 'd': 4, 'e': 5,
@@ -12,58 +10,58 @@ KEYMAP = {
     'z': 26
 }
 
-keys_left = [
+l_layout_template = [
     [None, 0, 0, 0, None],
     [0, 0, 0, 0, 0],
     [0, 0, 0, 0, 0],
 ]
 
-keys_right = [
+r_layout_template = [
     [None, 0, 0, 0, None],
     [0, 0, 0, 0, 0],
     [0, 0, 0, 0, 0],
 ]
 
-fingers_left = [
-    [0, 1, 2, 3, 4],
-    [0, 1, 2, 3, 4],
-    [0, 1, 2, 3, 4]
+l_finger_map = [
+    [0, 1, 2, 3, 3],
+    [0, 1, 2, 3, 3],
+    [0, 1, 2, 3, 3]
 ]
 
-fingers_right = [
-    [5, 5, 6, 7, 8],
-    [5, 5, 6, 7, 8],
-    [5, 5, 6, 7, 8]
+r_finger_map = [
+    [4, 4, 5, 6, 7],
+    [4, 4, 5, 6, 7],
+    [4, 4, 5, 6, 7]
 ]
 
-effort_left = [
+l_effort_map = [
     [8, 3, 3, 3, 7],
     [2, 0, 0, 0, 6],
-    [9, 7, 7, 7, 8],
+    [9, 6, 6, 6, 8],
 ]
 
-effort_right = [
-    [7, 2, 2, 2, 8],
+r_effort_map = [
+    [7, 3, 3, 3, 8],
     [6, 0, 0, 0, 2],
-    [8, 5, 5, 5, 9],
+    [8, 6, 6, 6, 9],
 ]
 
-distance_left = [
+l_distance_map = [
     [0.18,  0.18,    0.18,    0.18,    0.23],
     [0.00,  0.00,    0.00,    0.00,    0.20],
     [0.18,  0.18,    0.18,    0.18,    0.30],
 ]
 
-distance_right = [
+r_distance_map = [
     [0.23,  0.18,    0.18,    0.18,    0.18],
     [0.20,  0.00,    0.00,    0.00,    0.00],
     [0.30,  0.18,    0.18,    0.18,    0.18],
 ]
 
-KEYS = combine_matrices(keys_left, keys_right)
-FINGERS = combine_matrices(fingers_left, fingers_right)
-EFFORT = combine_matrices(effort_left, effort_right)
-DISTANCE = combine_matrices(distance_left, distance_right)
+LAYOUT_TEMPLATE = combine_matrices(l_layout_template, r_layout_template)
+FINGER_MAP = combine_matrices(l_finger_map, r_finger_map)
+EFFORT_MAP = combine_matrices(l_effort_map, r_effort_map)
+DISTANCE_MAP = combine_matrices(l_distance_map, r_distance_map)
 UNIGRAMS = get_unigram("data/english_1grams.csv", KEYMAP)
 BIGRAMS = get_bigram("data/english_2grams.csv", KEYMAP)
 TRIGRAMS = get_trigram("data/english_3grams.csv", KEYMAP)

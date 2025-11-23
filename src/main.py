@@ -1,3 +1,3 @@
 from optimizer import msa
 
-msa(100, 40, 26, 26)
+msa(100, 500, 26, 26)

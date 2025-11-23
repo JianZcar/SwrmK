@@ -1,13 +1,17 @@
 from typing import List, Dict, Tuple, Optional
-from config import KEYS, FINGERS, EFFORT, DISTANCE, UNIGRAMS, BIGRAMS, TRIGRAMS
-from optimizer.evaluate.metrics import build_placement, get_sfb
+from config import (LAYOUT_TEMPLATE, FINGER_MAP, EFFORT_MAP,
+                    DISTANCE_MAP, UNIGRAMS, BIGRAMS, TRIGRAMS)
+from optimizer.evaluate.metrics import build_placement, get_sfb, get_effort
 from utils import apply_layout
 
 
 def evaluate(
-    keys: list,
+    key_sequence: list,
 ) -> Tuple[float, Dict]:
-    keys = apply_layout(keys, KEYS)
-    placement = build_placement(keys, FINGERS, EFFORT)
-    score = get_sfb(BIGRAMS, placement)
+    layout = apply_layout(key_sequence, LAYOUT_TEMPLATE)
+    placement = build_placement(layout, FINGER_MAP, EFFORT_MAP)
+    sfb = get_sfb(BIGRAMS, placement)
+    effort = get_effort(UNIGRAMS, placement)
+
+    score = (sfb*10)+effort
     return None, score
