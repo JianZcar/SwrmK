@@ -40,9 +40,10 @@ def get_sfb(bigrams: List[Tuple[int, int, int]],
     return total_score
 
 
-def get_effort(unigrams: Dict[int, float],
-               placement: Optional[Dict[int, Tuple[int, int, int, int]]]
-               ):
+def get_uge(unigrams: Dict[int, float],
+            placement: Optional[Dict[int, Tuple[int, int, int, int]]]
+            ):
+    # Unigram Effort
     total_score = 0.0
     for char, freq in unigrams.items():
         p = placement[char]

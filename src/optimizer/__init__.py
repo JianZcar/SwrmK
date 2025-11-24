@@ -1,14 +1,15 @@
+import numpy as np
 from os import cpu_count
 from tabulate import tabulate
-from concurrent.futures import ProcessPoolExecutor
 from optimizer.evaluate import evaluate
 from utils import apply_layout, layout_to_letters
+from concurrent.futures import ProcessPoolExecutor
 from config import LAYOUT_TEMPLATE, KEYMAP
-import numpy as np
 
 
-def evaluate_layout(layout):
-    return evaluate(layout)
+def evaluate_layout(layout: list, get_metrics: bool = False):
+    # If get_metrics is true only the metrics is returned
+    return evaluate(layout, get_metrics)
 
 
 def random_layout(n_slots, n_letters, rng):
@@ -110,9 +111,8 @@ def simulated_annealing(layout: list,   n_iter: int,
                         seed=None):
     rng = np.random.default_rng(seed)
     current_layout = layout.copy()
-    current_metrics, current_score = evaluate_layout(current_layout)
+    current_score = evaluate_layout(current_layout)
     best = current_layout.copy()
-    best_metrics = current_metrics
     best_score = current_score
     T = f_t0
     n_slots = len(current_layout)
@@ -121,31 +121,29 @@ def simulated_annealing(layout: list,   n_iter: int,
         i, j = rng.integers(0, n_slots, size=2)
         neighbor = current_layout.copy()
         neighbor[i], neighbor[j] = neighbor[j], neighbor[i]
-        neigh_metrics, neigh_score = evaluate_layout(neighbor)
-        delta = ((neigh_score/best_score)*100) - ((current_score/best_score)*100)
+        neigh_score = evaluate_layout(neighbor)
+        delta = ((neigh_score/best_score)*100) - \
+            ((current_score/best_score)*100)
         if delta < 0 or rng.random() < np.exp(-delta / max(1e-12, T)):
-            current_metrics, current_score, current = (neigh_metrics,
-                                                       neigh_score,
-                                                       neighbor)
+            current_score, current = (neigh_score, neighbor)
             if current_score < best_score:
-                best_metrics = current_metrics
                 best_score = current_score
                 best = current
         T *= f_alpha
 
-    return best_metrics, best_score, best
+    return best_score, best
 
 
 def _evaluate_child_worker(args):
     layout, f_prob, n_iter, f_t0, f_alpha, seed = args
     rng = np.random.default_rng(seed)
     if rng.random() < f_prob:
-        best_metrics, best_score, best_layout = simulated_annealing(
+        best_score, best_layout = simulated_annealing(
             layout, n_iter, f_t0, f_alpha, seed)
-        return best_metrics, best_score, best_layout
+        return best_score, best_layout
     else:
-        metrics, score = evaluate_layout(layout)
-        return metrics, score, layout
+        score = evaluate_layout(layout)
+        return score, layout
 
 
 def msa(
@@ -176,13 +174,11 @@ def msa(
     with ProcessPoolExecutor(max_workers=n_workers) as ex:
         results = list(ex.map(_evaluate_child_worker, initial_args))
 
-    scores = np.array([score for (_metrics, score, _layout) in results])
+    scores = np.array([score for (score, _layout) in results])
     print(scores)
-    # l_metrics = np.array([metrics for (metrics, _score, _layout) in results])
 
     best_idx = int(np.argmin(scores))
     global_best = pop[best_idx].copy()
-    # global_metrics = l_metrics[best_idx].copy()
     global_score = float(scores[best_idx])
 
     if verbose:
@@ -222,7 +218,7 @@ def msa(
         with ProcessPoolExecutor(max_workers=n_workers) as ex:
             results = list(ex.map(_evaluate_child_worker, worker_args))
 
-        for _metrics, _score, layout in results:
+        for _score, layout in results:
             new_pop.append(layout)
 
         pop = np.vstack(new_pop)[:n_pop]
@@ -236,8 +232,7 @@ def msa(
         with ProcessPoolExecutor(max_workers=n_workers) as ex:
             results = list(ex.map(_evaluate_child_worker, score_args))
         scores = np.array(
-            [score for (_metrics, score, _layout) in results], dtype=float)
-        # l_metrics = np.array([metrics for (metrics, _score, _layout) in results], dtype=float)
+            [score for (score, _layout) in results], dtype=float)
 
         # update global best
         best_idx = int(np.argmin(scores))
@@ -247,7 +242,6 @@ def msa(
             best_layout = layout_to_letters(
                 apply_layout(global_best, LAYOUT_TEMPLATE), KEYMAP)
             print(tabulate(best_layout, tablefmt="fancy_grid"))
-            # global_metrics = l_metrics[best_idx].copy()
             if verbose:
                 print(f"Gen {gen}: new global best = {global_score:.6f}")
 
@@ -264,7 +258,7 @@ def msa(
             with ProcessPoolExecutor(max_workers=n_workers) as ex:
                 results = list(ex.map(_evaluate_child_worker, score_args))
             scores = np.array(
-                [score for (_metrics, score, _layout) in results], dtype=float)
+                [score for (score, _layout) in results], dtype=float)
 
         if verbose and (gen % max(1, n_gen // 10) == 0):
             print(

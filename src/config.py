@@ -10,6 +10,13 @@ KEYMAP = {
     'z': 26
 }
 
+WEIGHTS = {
+    # Single Finger Bigram
+    "SFB": 10.0,
+    # Unigram Effort, encourages high frequency char in low effort key
+    "UGE": 1.0
+}
+
 l_layout_template = [
     [None, 0, 0, 0, None],
     [0, 0, 0, 0, 0],
