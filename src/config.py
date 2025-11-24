@@ -1,4 +1,6 @@
-from utils import combine_matrices, get_unigram, get_bigram, get_trigram
+from utils import (combine_matrices, get_unigrams,
+                   get_bigrams, get_trigrams,
+                   get_skip_bigrams)
 
 
 KEYMAP = {
@@ -14,7 +16,11 @@ WEIGHTS = {
     # Single Finger Bigram
     "SFB": 10.0,
     # Unigram Effort, encourages high frequency char in low effort key
-    "UGE": 1.0
+    "UGE": 1.0,
+    "LSB": 1.0,
+    # Single Finger Skip Bigrams
+    "SFSB": 1.0,
+    "SCISSORS": 1.0
 }
 
 l_layout_template = [
@@ -42,33 +48,39 @@ r_finger_map = [
 ]
 
 l_effort_map = [
-    [8, 3, 3, 3, 7],
-    [2, 0, 0, 0, 6],
-    [9, 6, 6, 6, 8],
+    [8, 4, 4, 4, 7],
+    [3, 0, 0, 0, 6],
+    [10, 6, 6, 6, 8],
 ]
 
 r_effort_map = [
-    [7, 3, 3, 3, 8],
-    [6, 0, 0, 0, 2],
-    [8, 6, 6, 6, 9],
+    [7, 4, 4, 4, 8],
+    [6, 0, 0, 0, 3],
+    [8, 6, 6, 6, 10],
 ]
 
 l_distance_map = [
-    [0.18,  0.18,    0.18,    0.18,    0.23],
-    [0.00,  0.00,    0.00,    0.00,    0.20],
-    [0.18,  0.18,    0.18,    0.18,    0.30],
+    [1.00,  1.00,    1.00,    1.00,    1.00],
+    [0.00,  0.00,    0.00,    0.00,    0.00],
+    [1.00,  1.00,    1.00,    1.00,    1.00],
 ]
 
 r_distance_map = [
-    [0.23,  0.18,    0.18,    0.18,    0.18],
-    [0.20,  0.00,    0.00,    0.00,    0.00],
-    [0.30,  0.18,    0.18,    0.18,    0.18],
+    [1.00,  1.00,    1.00,    1.00,    1.00],
+    [0.00,  0.00,    0.00,    0.00,    0.00],
+    [1.00,  1.00,    1.00,    1.00,    1.00],
 ]
 
 LAYOUT_TEMPLATE = combine_matrices(l_layout_template, r_layout_template)
 FINGER_MAP = combine_matrices(l_finger_map, r_finger_map)
 EFFORT_MAP = combine_matrices(l_effort_map, r_effort_map)
 DISTANCE_MAP = combine_matrices(l_distance_map, r_distance_map)
-UNIGRAMS = get_unigram("data/english_1grams.csv", KEYMAP)
-BIGRAMS = get_bigram("data/english_2grams.csv", KEYMAP)
-TRIGRAMS = get_trigram("data/english_3grams.csv", KEYMAP)
+UNIGRAMS = get_unigrams("data/english_1grams.csv", KEYMAP)
+BIGRAMS = get_bigrams("data/english_2grams.csv", KEYMAP)
+TRIGRAMS = get_trigrams("data/english_3grams.csv", KEYMAP)
+SKIP_BIGRAMS = get_skip_bigrams("data/english_words.csv", KEYMAP)
+
+for i, row in enumerate(LAYOUT_TEMPLATE):
+    if len(row) % 2 != 0:
+        raise ValueError(f"LAYOUT_TEMPLATE row {
+            i} is asymmetrical (length {len(row)})")

@@ -7,31 +7,29 @@ from concurrent.futures import ProcessPoolExecutor
 from config import LAYOUT_TEMPLATE, KEYMAP
 
 
-def evaluate_layout(layout: list, get_metrics: bool = False):
+def evaluate_layout(s_char: list, get_metrics: bool = False):
     # If get_metrics is true only the metrics is returned
-    return evaluate(layout, get_metrics)
+    return evaluate(s_char, get_metrics)
 
 
-def random_layout(n_slots, n_letters, rng):
-    """Create a random layout array (slot->letter values 0..n_letters)."""
+def random_sequence_char(n_slots, n_char, rng):
+    """Create a random char array (slot->letter values 0..n_char)."""
     slots = np.arange(n_slots)
     rng.shuffle(slots)
-    layout = np.zeros(n_slots, dtype=int)
-    for letter_idx, slot in enumerate(slots[:n_letters], start=1):
-        layout[slot] = letter_idx
-    return layout
+    s_char = np.zeros(n_slots, dtype=int)
+    for char_idx, slot in enumerate(slots[:n_char], start=1):
+        s_char[slot] = char_idx
+    return s_char
 
 
-def init_population(n_pop, n_slots, n_letters, rng):
-    """Initialize population of slot->letter layouts."""
+def init_population(n_pop, n_slots, n_char, rng):
     pop = np.zeros((n_pop, n_slots), dtype=int)
     for i in range(n_pop):
-        pop[i] = random_layout(n_slots, n_letters, rng)
+        pop[i] = random_sequence_char(n_slots, n_char, rng)
     return pop
 
 
 def tournament_select(pop, scores, rng, k=3):
-    """Tournament selection: return a copy of the winner layout."""
     idxs = rng.integers(0, pop.shape[0], size=k)
     winner = idxs[np.argmin(scores[idxs])]
     return pop[winner].copy()
@@ -53,7 +51,8 @@ def segment_crossover(parent_a, parent_b, rng):
             except StopIteration:
                 break
     missing = [x for x in range(
-        1, max(1, int(max(a.max(), b.max())) + 1)) if x not in set(child.tolist())]
+        1, max(1, int(max(a.max(), b.max())) + 1)
+    ) if x not in set(child.tolist())]
     if missing:
         miss_iter = iter(missing)
         for pos in range(n):
@@ -65,18 +64,18 @@ def segment_crossover(parent_a, parent_b, rng):
     return child
 
 
-def inversion_mutation(layout, rng, max_span=10):
-    new = layout.copy()
+def inversion_mutation(s_char, rng, max_span=10):
+    new = s_char.copy()
     n = len(new)
     i, j = sorted(rng.integers(0, n, size=2))
     new[i:j+1] = new[i:j+1][::-1]
     return new
 
 
-def swap_mutation(layout, rng, swap_prob=0.1):
+def swap_mutation(s_char, rng, swap_prob=0.1):
     if rng.random() < 0.5:
-        return inversion_mutation(layout, rng)
-    new = layout.copy()
+        return inversion_mutation(s_char, rng)
+    new = s_char.copy()
     n = len(new)
     attempts = max(1, int(np.ceil(n * swap_prob)))
     for _ in range(attempts):
@@ -85,41 +84,41 @@ def swap_mutation(layout, rng, swap_prob=0.1):
     return new
 
 
-def ensure_unique_mutation(layout, seen_set, rng,
+def ensure_unique_mutation(s_char, seen_set, rng,
                            swap_prob=0.5, max_attempts=100):
     for _ in range(max_attempts):
-        candidate = swap_mutation(layout, rng, swap_prob=swap_prob)
+        candidate = swap_mutation(s_char, rng, swap_prob=swap_prob)
 
         tup = tuple(int(x) for x in candidate.tolist())
         if tup not in seen_set:
             seen_set.add(tup)
             return candidate
 
-    n_slots = len(layout)
-    n_char = int(np.count_nonzero(layout))
+    n_slots = len(s_char)
+    n_char = int(np.count_nonzero(s_char))
 
     while True:
-        candidate = random_layout(n_slots, n_char)
+        candidate = random_sequence_char(n_slots, n_char)
         tup = tuple(int(x) for x in candidate.tolist())
         if tup not in seen_set:
             seen_set.add(tup)
             return candidate
 
 
-def simulated_annealing(layout: list,   n_iter: int,
+def simulated_annealing(s_char: list,   n_iter: int,
                         f_t0: float,    f_alpha: float,
                         seed=None):
     rng = np.random.default_rng(seed)
-    current_layout = layout.copy()
-    current_score = evaluate_layout(current_layout)
-    best = current_layout.copy()
+    current_s_char = s_char.copy()
+    current_score = evaluate_layout(current_s_char)
+    best = current_s_char.copy()
     best_score = current_score
     T = f_t0
-    n_slots = len(current_layout)
+    n_slots = len(current_s_char)
 
     for _ in range(n_iter):
         i, j = rng.integers(0, n_slots, size=2)
-        neighbor = current_layout.copy()
+        neighbor = current_s_char.copy()
         neighbor[i], neighbor[j] = neighbor[j], neighbor[i]
         neigh_score = evaluate_layout(neighbor)
         delta = ((neigh_score/best_score)*100) - \
@@ -135,15 +134,15 @@ def simulated_annealing(layout: list,   n_iter: int,
 
 
 def _evaluate_child_worker(args):
-    layout, f_prob, n_iter, f_t0, f_alpha, seed = args
+    s_char, f_prob, n_iter, f_t0, f_alpha, seed = args
     rng = np.random.default_rng(seed)
     if rng.random() < f_prob:
-        best_score, best_layout = simulated_annealing(
-            layout, n_iter, f_t0, f_alpha, seed)
-        return best_score, best_layout
+        best_score, s_char = simulated_annealing(
+            s_char, n_iter, f_t0, f_alpha, seed)
+        return best_score, s_char
     else:
-        score = evaluate_layout(layout)
-        return score, layout
+        score = evaluate_layout(s_char)
+        return score, s_char
 
 
 def msa(
@@ -167,14 +166,14 @@ def msa(
 
     pop = init_population(n_pop, n_slots, n_char, rng)
 
-    seen_layouts = set(tuple(int(x) for x in row.tolist()) for row in pop)
+    seen_s_char = set(tuple(int(x) for x in row.tolist()) for row in pop)
 
     initial_args = [(pop[i], 0.0, 0, 0.0, 0.0,
                      rng.integers(0, 2**31 - 1)) for i in range(n_pop)]
     with ProcessPoolExecutor(max_workers=n_workers) as ex:
         results = list(ex.map(_evaluate_child_worker, initial_args))
 
-    scores = np.array([score for (score, _layout) in results])
+    scores = np.array([score for (score, _s_char) in results])
     print(scores)
 
     best_idx = int(np.argmin(scores))
@@ -205,7 +204,7 @@ def msa(
                 child = parent_a.copy()
 
             child = ensure_unique_mutation(
-                child, seen_layouts, rng, swap_prob=f_mut)
+                child, seen_s_char, rng, swap_prob=f_mut)
 
             offspring.append(child)
             offspring_seeds.append(int(rng.integers(0, 2**31 - 1)))
@@ -218,12 +217,12 @@ def msa(
         with ProcessPoolExecutor(max_workers=n_workers) as ex:
             results = list(ex.map(_evaluate_child_worker, worker_args))
 
-        for _score, layout in results:
-            new_pop.append(layout)
+        for _score, s_char in results:
+            new_pop.append(s_char)
 
         pop = np.vstack(new_pop)[:n_pop]
 
-        seen_layouts = set(tuple(int(x) for x in row.tolist()) for row in pop)
+        seen_s_char = set(tuple(int(x) for x in row.tolist()) for row in pop)
 
         score_args = [
             (pop[i], 0.0, 0, 0.0, 0.0, int(rng.integers(0, 2**31 - 1)))
@@ -232,7 +231,7 @@ def msa(
         with ProcessPoolExecutor(max_workers=n_workers) as ex:
             results = list(ex.map(_evaluate_child_worker, score_args))
         scores = np.array(
-            [score for (score, _layout) in results], dtype=float)
+            [score for (score, _s_char) in results], dtype=float)
 
         # update global best
         best_idx = int(np.argmin(scores))
@@ -249,8 +248,8 @@ def msa(
         if mean_std < 1e-3:
             num_reseed = max(1, n_pop // 2)
             for r_idx in rng.choice(n_pop, size=num_reseed, replace=False):
-                pop[r_idx] = random_layout(n_slots, n_char, rng)
-                seen_layouts.add(tuple(int(x) for x in pop[r_idx].tolist()))
+                pop[r_idx] = random_sequence_char(n_slots, n_char, rng)
+                seen_s_char.add(tuple(int(x) for x in pop[r_idx].tolist()))
             score_args = [
                 (pop[i], 0.0, 0, 0.0, 0.0, int(rng.integers(0, 2**31 - 1)))
                 for i in range(pop.shape[0])
@@ -258,7 +257,7 @@ def msa(
             with ProcessPoolExecutor(max_workers=n_workers) as ex:
                 results = list(ex.map(_evaluate_child_worker, score_args))
             scores = np.array(
-                [score for (score, _layout) in results], dtype=float)
+                [score for (score, _s_char) in results], dtype=float)
 
         if verbose and (gen % max(1, n_gen // 10) == 0):
             print(

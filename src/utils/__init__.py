@@ -1,21 +1,23 @@
 import csv
+from typing import List, Dict, Tuple, Optional
+from collections import defaultdict
 
 
 def combine_matrices(left, right):
     return [l_row + r_row for l_row, r_row in zip(left, right)]
 
 
-def apply_layout(seq, keys):
+def apply_layout(s_char, layout_template):
     """
-    seq: 1D algorithm output list of ints (0 means skip)
+    s_char: 1D algorithm output list of ints (0 means skip)
     keys: 2D keyboard template (0 = available, None = unusable)
     """
-    mapped = [row[:] for row in keys]  # deep copy
+    mapped = [row[:] for row in layout_template]  # deep copy
     i = 0
-    for row in range(len(keys)):
-        for col in range(len(keys[0])):
+    for row in range(len(layout_template)):
+        for col in range(len(layout_template[0])):
             if mapped[row][col] is not None:
-                mapped[row][col] = seq[i]
+                mapped[row][col] = s_char[i]
                 i += 1
 
     clean = [[0 if v is None else int(v) for v in row] for row in mapped]
@@ -39,14 +41,29 @@ def layout_to_letters(num_layout, keymap):
             if v == 0:
                 letter_row.append('')  # empty slot
             else:
-                # fallback to '?' if not found
                 letter_row.append(rev_map.get(v, '?'))
         letter_layout.append(letter_row)
 
     return letter_layout
 
 
-def get_unigram(path, definition):
+def build_placement(layout:     List[List[int]],
+                    finger_map: List[List[int]],
+                    effort:     List[List[int]]
+                    ) -> Dict[int, Tuple[int, int, int, int]]:
+    """
+    Build mapping key -> (row, col) for O(1) lookups.
+    Keys with value 0 (unused) will be omitted.
+    """
+    placement = {}
+    for r, row in enumerate(layout):
+        for c, k in enumerate(row):
+            if k:
+                placement[k] = (r, c, finger_map[r][c], effort[r][c]/10)
+    return placement
+
+
+def get_unigrams(path, definition):
     letter_freq = {}
     rows = []
     total_freq = 0
@@ -65,7 +82,7 @@ def get_unigram(path, definition):
     return letter_freq
 
 
-def get_bigram(path, definition):
+def get_bigrams(path, definition):
     bigrams = []
     rows = []
     total_freq = 0
@@ -87,7 +104,7 @@ def get_bigram(path, definition):
     return bigrams
 
 
-def get_trigram(path, definition):
+def get_trigrams(path, definition):
     trigrams = []
     rows = []
     total_freq = 0
@@ -108,3 +125,40 @@ def get_trigram(path, definition):
         if ka and kb and kc:
             trigrams.append((ka, kb, kc, freq / total_freq))
     return trigrams
+
+
+def get_skip_bigrams(path, definition, skip=1):
+    totals = defaultdict(float)
+    total_freq = 0
+    rows = []
+
+    with open(path, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            word = row["word"]
+            freq = int(row["freq"])
+            rows.append((word, freq))
+            total_freq += freq
+
+    for word, freq in rows:
+        word = word.strip()
+        if len(word) <= skip:
+            continue
+
+        for i in range(len(word) - skip - 1):
+            c1 = word[i].lower()
+            c2 = word[i + skip + 1].lower()
+            if c1 == c2:
+                continue
+
+            k1 = definition.get(c1)
+            k2 = definition.get(c2)
+            if k1 is None or k2 is None:
+                continue
+
+            rel_freq = freq / total_freq
+            totals[(k1, k2)] += rel_freq
+
+    skip_bigrams = [(k1, k2, freq_sum)
+                    for (k1, k2), freq_sum in totals.items()]
+    return skip_bigrams
